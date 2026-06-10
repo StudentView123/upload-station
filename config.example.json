@@ -1,0 +1,19 @@
+{
+  "hub_base_url": "https://YOUR-SUPABASE-REF.supabase.co/functions/v1",
+  "station_token": "PASTE-TOKEN-FROM-PRACTICE-HUB-IMAGING-SETTINGS",
+  "station_name": "Upload Station",
+
+  "aet": "UPLOADSTATION",
+  "dicom_port": 4242,
+  "ui_port": 8088,
+  "orthanc_http_port": 8042,
+
+  "images_dir": "~/UploadStation/Images",
+  "data_dir": "~/UploadStation/Data",
+
+  "worklist_modalities": ["OPT", "OP", "OPV", "OT"],
+  "worklist_refresh_seconds": 300,
+  "export_poll_seconds": 10,
+
+  "orthanc_executable": null
+}

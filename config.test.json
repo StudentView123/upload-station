@@ -1,0 +1,14 @@
+{
+  "hub_base_url": "http://127.0.0.1:9999",
+  "station_token": "test-token",
+  "station_name": "Dev Test Station",
+  "aet": "UPLOADSTATION",
+  "dicom_port": 4242,
+  "ui_port": 8088,
+  "orthanc_http_port": 8042,
+  "images_dir": "./runtime/images",
+  "data_dir": "./runtime/data",
+  "worklist_modalities": ["OPT", "OP", "OT"],
+  "worklist_refresh_seconds": 60,
+  "export_poll_seconds": 5
+}
