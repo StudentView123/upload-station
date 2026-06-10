@@ -31,7 +31,8 @@ copy config.example.json config.json
 In Practice Hub → **Imaging → Stations** (admin), create a station for this
 office and copy its token. Then edit `config.json`:
 
-- `hub_base_url` — the Practice Hub functions URL (shown on the same admin page)
+- `hub_base_url` — already set to the Practice Hub functions URL
+  (`https://iqbszdfexefwursnocgb.supabase.co/functions/v1`)
 - `station_token` — the token you just copied (this is what scopes the station
   to this office's schedule)
 - `station_name` — e.g. `"Main St Office — Front Desk PC"`
