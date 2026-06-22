@@ -9,12 +9,14 @@ What it does, per office:
    (authenticated by a per-office station token).
 2. Serves them to imaging equipment as a **DICOM Modality Worklist** — every
    device shows the day's patients, no manual typing.
-3. Receives finished images via **DICOM C-STORE** and saves them to a local
-   folder, organized by date / patient, as original DICOM plus PNG copies.
-4. Shows a local **queue UI** (<http://localhost:8088>) where staff open the
-   image folder, upload to the EMR, and click **Mark uploaded**.
-5. Reports captured/uploaded status back to Practice Hub so the Imaging page
-   shows progress across all offices.
+3. Receives finished images via **DICOM C-STORE**, renders PNGs, and **streams
+   them up to Practice Hub** (private Supabase storage) so staff can view and
+   download them from any computer — no local software needed for viewing.
+   A local copy is also kept by default.
+4. Reports each study (with its image references) to Practice Hub, where the
+   `/dicom` page shows the gallery, per-image download, and **Mark uploaded**.
+5. Can run **headless** (`local_ui_enabled: false`) as a pure relay; a local
+   fallback queue UI (<http://localhost:8088>) is available when enabled.
 
 The DICOM engine is [Orthanc](https://www.orthanc-server.com) (free, open
 source) with its worklists plugin; the station generates Orthanc's
