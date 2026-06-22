@@ -44,11 +44,13 @@ class HubClient:
             log.warning("Could not report studies to Practice Hub (will retry): %s", exc)
             return False
 
-    def get_upload_urls(self, study_uid: str, study_date: str, files: list[dict]) -> dict[str, dict]:
+    def get_upload_urls(self, study_uid: str, study_date: str, files: list[dict]) -> list[dict]:
         """Ask Practice Hub for signed upload URLs for image files.
 
-        `files` is [{"name", "content_type"}]. Returns a map name -> {"storage_path", "put_url"}.
-        Raises on failure so the caller retries on the next poll.
+        `files` is [{"name", "content_type"}]. Returns the `uploads` list in the
+        same order as requested — each item is {"name", "storage_path", "put_url"}.
+        The hub may sanitize names, so callers should match positionally and use
+        the returned storage_path/name verbatim. Raises on failure to retry later.
         """
         resp = self.session.post(
             f"{self.cfg.hub_base_url}/dicom-upload-url",
@@ -56,8 +58,7 @@ class HubClient:
             timeout=30,
         )
         resp.raise_for_status()
-        uploads = resp.json().get("uploads", [])
-        return {u["name"]: u for u in uploads}
+        return resp.json().get("uploads", [])
 
     def put_file(self, put_url: str, data: bytes, content_type: str) -> None:
         """Upload raw bytes to a signed storage URL.

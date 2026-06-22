@@ -156,19 +156,24 @@ class Exporter:
                 continue
             study_date = _local_date(s["captured_at"])
             try:
-                urls = self.hub.get_upload_urls(
+                uploads = self.hub.get_upload_urls(
                     s["study_uid"], study_date,
                     [{"name": f["name"], "content_type": f["content_type"]} for f in pending],
                 )
             except requests.RequestException as exc:
                 log.warning("Could not get upload URLs (will retry): %s", exc)
                 continue
+            if len(uploads) != len(pending):
+                log.warning("Upload-URL count mismatch for study %s (got %d, want %d); retrying",
+                            s["study_uid"][:16], len(uploads), len(pending))
+                continue
 
+            # Match positionally — the hub may sanitize names, so trust the
+            # returned storage_path/put_url verbatim rather than our sent name.
             changed = False
-            for f in pending:
-                target = urls.get(f["name"])
+            for f, target in zip(pending, uploads):
                 local = Path(f["local_path"])
-                if not target or not local.exists():
+                if not local.exists():
                     continue
                 try:
                     self.hub.put_file(target["put_url"], local.read_bytes(), f["content_type"])
@@ -177,6 +182,7 @@ class Exporter:
                     continue
                 f["uploaded"] = True
                 f["storage_path"] = target["storage_path"]
+                f["name"] = target.get("name", f["name"])
                 changed = True
                 if not self.cfg.keep_local_copy:
                     local.unlink(missing_ok=True)
