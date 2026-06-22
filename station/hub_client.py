@@ -43,3 +43,32 @@ class HubClient:
         except requests.RequestException as exc:
             log.warning("Could not report studies to Practice Hub (will retry): %s", exc)
             return False
+
+    def get_upload_urls(self, study_uid: str, study_date: str, files: list[dict]) -> dict[str, dict]:
+        """Ask Practice Hub for signed upload URLs for image files.
+
+        `files` is [{"name", "content_type"}]. Returns a map name -> {"storage_path", "put_url"}.
+        Raises on failure so the caller retries on the next poll.
+        """
+        resp = self.session.post(
+            f"{self.cfg.hub_base_url}/dicom-upload-url",
+            json={"study_instance_uid": study_uid, "study_date": study_date, "files": files},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        uploads = resp.json().get("uploads", [])
+        return {u["name"]: u for u in uploads}
+
+    def put_file(self, put_url: str, data: bytes, content_type: str) -> None:
+        """Upload raw bytes to a signed storage URL.
+
+        Uses a bare request (not the authenticated session) so the station
+        token is never sent to the storage endpoint.
+        """
+        resp = requests.put(
+            put_url,
+            data=data,
+            headers={"Content-Type": content_type, "x-upsert": "true"},
+            timeout=120,
+        )
+        resp.raise_for_status()

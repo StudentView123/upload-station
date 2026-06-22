@@ -15,5 +15,10 @@
   "worklist_refresh_seconds": 300,
   "export_poll_seconds": 10,
 
+  "stream_images_to_hub": true,
+  "upload_dicom_originals": false,
+  "keep_local_copy": true,
+  "local_ui_enabled": true,
+
   "orthanc_executable": null
 }

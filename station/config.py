@@ -27,6 +27,16 @@ class Config:
     worklist_refresh_seconds: int = 300
     export_poll_seconds: int = 10
 
+    # Stream captured images to Practice Hub so they're viewable from any
+    # computer. When True the relay uploads the rendered PNGs (and optionally the
+    # DICOM originals) to the hub's private storage and registers them.
+    stream_images_to_hub: bool = True
+    upload_dicom_originals: bool = False
+    keep_local_copy: bool = True
+    # The local web UI is optional once images live in Practice Hub. Left on by
+    # default as an on-site health/fallback view; set False for a headless relay.
+    local_ui_enabled: bool = True
+
     orthanc_executable: str | None = None
 
     @property

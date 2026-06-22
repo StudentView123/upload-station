@@ -12,8 +12,10 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 TOKEN = "test-token"
+STORAGE_DIR = Path(__file__).resolve().parent.parent / "runtime" / "mock_storage"
 
 PATIENTS = [
     {"first": "Maria", "last": "Lopez", "chart": "10241", "dob": "1957-03-14", "gender": "female"},
@@ -68,6 +70,10 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _read_body(self) -> dict:
+        length = int(self.headers.get("Content-Length", 0))
+        return json.loads(self.rfile.read(length) or b"{}")
+
     def do_GET(self):
         if self.path != "/dicom-worklist":
             return self._send(404, {"error": "not found"})
@@ -76,19 +82,50 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, build_worklist())
 
     def do_POST(self):
-        if self.path != "/dicom-studies":
+        if self.path == "/dicom-upload-url":
+            if not self._authed():
+                return self._send(401, {"error": "bad token"})
+            body = self._read_body()
+            study = body.get("study_instance_uid", "study")
+            date = body.get("study_date", "nodate")
+            uploads = []
+            for f in body.get("files", []):
+                storage_path = f"mock-location/{date}/{study}/{f['name']}"
+                uploads.append({
+                    "name": f["name"],
+                    "storage_path": storage_path,
+                    "put_url": f"http://127.0.0.1:9999/storage/{storage_path}",
+                })
+            return self._send(200, {"uploads": uploads})
+
+        if self.path == "/dicom-studies":
+            if not self._authed():
+                return self._send(401, {"error": "bad token"})
+            body = self._read_body()
+            print("\n=== Station reported studies ===")
+            print(json.dumps(body, indent=2))
+            log_path = STORAGE_DIR.parent / "hub_posts.log"
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(log_path, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(body, indent=2) + "\n")
+            results = [
+                {"study_instance_uid": s.get("study_instance_uid"), "ok": True}
+                for s in body.get("studies", [])
+            ]
+            return self._send(200, {"results": results})
+
+        self._send(404, {"error": "not found"})
+
+    def do_PUT(self):
+        if not self.path.startswith("/storage/"):
             return self._send(404, {"error": "not found"})
-        if not self._authed():
-            return self._send(401, {"error": "bad token"})
+        rel = self.path[len("/storage/"):]
+        dest = STORAGE_DIR / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
         length = int(self.headers.get("Content-Length", 0))
-        body = json.loads(self.rfile.read(length) or b"{}")
-        print("\n=== Station reported studies ===")
-        print(json.dumps(body, indent=2))
-        results = [
-            {"study_instance_uid": s.get("study_instance_uid"), "ok": True}
-            for s in body.get("studies", [])
-        ]
-        self._send(200, {"results": results})
+        dest.write_bytes(self.rfile.read(length))
+        print(f"[mock-hub] stored {rel} ({length} bytes)")
+        self._send(200, {"ok": True})
 
     def log_message(self, fmt, *args):
         print(f"[mock-hub] {fmt % args}")

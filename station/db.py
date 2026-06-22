@@ -31,6 +31,7 @@ class StationDB:
                     captured_at   TEXT,
                     status        TEXT DEFAULT 'captured',
                     uploaded_at   TEXT,
+                    files_json    TEXT,
                     hub_synced    INTEGER DEFAULT 0
                 );
                 CREATE TABLE IF NOT EXISTS meta (
@@ -39,6 +40,10 @@ class StationDB:
                 );
                 """
             )
+            # Migration for stations created before image streaming existed.
+            cols = {r["name"] for r in self._conn.execute("PRAGMA table_info(studies)")}
+            if "files_json" not in cols:
+                self._conn.execute("ALTER TABLE studies ADD COLUMN files_json TEXT")
 
     # -- meta ---------------------------------------------------------------
     def get_meta(self, key: str, default: str | None = None) -> str | None:

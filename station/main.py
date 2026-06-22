@@ -72,10 +72,19 @@ class StationRuntime:
         threading.Thread(target=self._worklist_loop, name="worklist", daemon=True).start()
         threading.Thread(target=self._export_loop, name="exporter", daemon=True).start()
 
-        app = create_app(self.cfg, self.db, self)
-        log.info("Web UI: http://localhost:%d", self.cfg.ui_port)
+        if self.cfg.stream_images_to_hub:
+            log.info("Streaming captured images to Practice Hub — view them at the /dicom page.")
+
         try:
-            uvicorn.run(app, host="127.0.0.1", port=self.cfg.ui_port, log_level="warning")
+            if self.cfg.local_ui_enabled:
+                app = create_app(self.cfg, self.db, self)
+                log.info("Local web UI: http://localhost:%d", self.cfg.ui_port)
+                uvicorn.run(app, host="127.0.0.1", port=self.cfg.ui_port, log_level="warning")
+            else:
+                log.info("Headless relay mode — no local UI. Images go to Practice Hub.")
+                self._stop.wait()
+        except KeyboardInterrupt:
+            pass
         finally:
             self._stop.set()
             self.orthanc.stop()
