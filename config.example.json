@@ -1,7 +1,17 @@
 {
   "hub_base_url": "https://iqbszdfexefwursnocgb.supabase.co/functions/v1",
-  "station_token": "PASTE-TOKEN-FROM-PRACTICE-HUB-IMAGING-SETTINGS",
+
   "station_name": "Upload Station",
+
+  "_comment_auth": "Leave this file without credentials to use the browser setup page (http://localhost:8088). Or pre-fill ONE of the methods below.",
+
+  "auth_mode": "token",
+  "station_token": "",
+
+  "_comment_enroll": "auth_mode 'enroll': set enrollment_code; the station registers itself and obtains its own token on first run.",
+  "enrollment_code": "",
+
+  "_comment_login": "auth_mode 'login': the station signs in to Practice Hub; configure this from the browser setup page (Log in tab).",
 
   "aet": "UPLOADSTATION",
   "dicom_port": 4242,

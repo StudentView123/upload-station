@@ -40,7 +40,7 @@ Source: "..\redist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinsta
 
 [Icons]
 Name: "{group}\Upload Station"; Filename: "{app}\UploadStation.exe"
-Name: "{group}\Upload Station screen (browser)"; Filename: "http://localhost:8088"
+Name: "{group}\Connect / Settings (browser)"; Filename: "http://localhost:8088/setup"
 Name: "{userstartup}\Upload Station"; Filename: "{app}\UploadStation.exe"
 
 [Run]
@@ -50,6 +50,8 @@ Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; S
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""Upload Station DICOM"" dir=in action=allow protocol=TCP localport=4242"; Flags: runhidden
 ; Launch the station at the end of setup.
 Filename: "{app}\UploadStation.exe"; Description: "Start the Upload Station now"; Flags: nowait postinstall skipifsilent
+; Open the browser setup page so the user can connect (token / code / login).
+Filename: "http://localhost:8088/setup"; Description: "Open the connection setup page"; Flags: shellexec nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""Upload Station DICOM"""; Flags: runhidden
@@ -60,27 +62,17 @@ var
 
 procedure InitializeWizard;
 begin
+  { Token entry is OPTIONAL. By default the user finishes setup in the browser
+    page (token / enrollment code / login). Advanced users may paste a token here. }
   TokenPage := CreateInputQueryPage(wpSelectDir,
-    'Practice Hub connection',
-    'Enter this office''s station token',
-    'Paste the station token from Practice Hub (Imaging - Stations). ' +
-    'It is entered once and saved on this machine; you will not need it again.');
-  TokenPage.Add('Station token:', False);
-  TokenPage.Add('Station name (e.g. Great Neck OCT):', False);
-  TokenPage.Values[1] := 'Upload Station';
-end;
-
-function NextButtonClick(CurPageID: Integer): Boolean;
-begin
-  Result := True;
-  if CurPageID = TokenPage.ID then
-  begin
-    if Trim(TokenPage.Values[0]) = '' then
-    begin
-      MsgBox('Please paste the station token from Practice Hub before continuing.', mbError, MB_OK);
-      Result := False;
-    end;
-  end;
+    'Connect to Practice Hub (optional)',
+    'You can connect now or right after install',
+    'Recommended: leave these blank and click Next. After install, a browser ' +
+    'page opens where you choose how to connect (office token, enrollment code, ' +
+    'or login). Advanced: paste an office token here to connect immediately.');
+  TokenPage.Add('Station name (optional, e.g. Great Neck OCT):', False);
+  TokenPage.Add('Office token (optional):', False);
+  TokenPage.Values[0] := 'Upload Station';
 end;
 
 function JsonEscape(const S: string): string;
@@ -98,20 +90,27 @@ var
   Cfg: string;
   Token, Name: string;
 begin
-  Token := JsonEscape(Trim(TokenPage.Values[0]));
-  Name := Trim(TokenPage.Values[1]);
+  Name := Trim(TokenPage.Values[0]);
   if Name = '' then
     Name := 'Upload Station';
   Name := JsonEscape(Name);
+  Token := JsonEscape(Trim(TokenPage.Values[1]));
+
   Cfg :=
     '{' + #13#10 +
     '  "hub_base_url": "{#HubBaseUrl}",' + #13#10 +
-    '  "station_token": "' + Token + '",' + #13#10 +
-    '  "station_name": "' + Name + '",' + #13#10 +
+    '  "station_name": "' + Name + '",' + #13#10;
+  if Token <> '' then
+    Cfg := Cfg +
+    '  "auth_mode": "token",' + #13#10 +
+    '  "station_token": "' + Token + '",' + #13#10;
+  Cfg := Cfg +
     '  "local_ui_enabled": true,' + #13#10 +
     '  "stream_images_to_hub": true' + #13#10 +
     '}' + #13#10;
-  SaveStringToFile(ExpandConstant('{app}\config.json'), Cfg, False);
+  { Do not overwrite an existing config on reinstall/upgrade. }
+  if not FileExists(ExpandConstant('{app}\config.json')) then
+    SaveStringToFile(ExpandConstant('{app}\config.json'), Cfg, False);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

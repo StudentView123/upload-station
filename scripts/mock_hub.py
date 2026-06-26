@@ -82,6 +82,17 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, build_worklist())
 
     def do_POST(self):
+        if self.path == "/dicom-enroll":
+            body = self._read_body()
+            if not body.get("enrollment_code"):
+                return self._send(401, {"error": "bad code"})
+            print(f"[mock-hub] enrolled device: {body.get('device_name')}")
+            return self._send(200, {
+                "station_token": TOKEN,
+                "location_id": "mock-location",
+                "location_name": "Test Office",
+            })
+
         if self.path == "/dicom-upload-url":
             if not self._authed():
                 return self._send(401, {"error": "bad token"})
