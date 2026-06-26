@@ -5,5 +5,8 @@ vendor/
 config.json
 runtime/
 dist/
+dist_installer/
 build/
-*.spec
+redist/
+# Build artifacts, but keep the committed PyInstaller spec under packaging/.
+/*.spec

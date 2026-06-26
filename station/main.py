@@ -58,11 +58,28 @@ class StationRuntime:
             self._stop.wait(timeout=self.cfg.export_poll_seconds)
 
     # -- entry point --------------------------------------------------------------
+    def _setup_logging(self) -> None:
+        fmt = logging.Formatter("%(asctime)s %(name)-9s %(levelname)-7s %(message)s")
+        root = logging.getLogger()
+        root.setLevel(logging.INFO)
+        # Console (no-op in a windowed/frozen build, useful in a terminal).
+        stream = logging.StreamHandler()
+        stream.setFormatter(fmt)
+        root.addHandler(stream)
+        # Rotating file log so a background/windowed install is still debuggable.
+        try:
+            from logging.handlers import RotatingFileHandler
+            log_path = self.cfg.data_path / "station-app.log"
+            fileh = RotatingFileHandler(
+                log_path, maxBytes=2_000_000, backupCount=3, encoding="utf-8"
+            )
+            fileh.setFormatter(fmt)
+            root.addHandler(fileh)
+        except Exception:
+            pass
+
     def run(self) -> None:
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s %(name)-9s %(levelname)-7s %(message)s",
-        )
+        self._setup_logging()
         log.info("Upload Station starting — %s", self.cfg.station_name)
 
         if not self.orthanc.start():

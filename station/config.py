@@ -9,6 +9,23 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def is_frozen() -> bool:
+    """True when running from a PyInstaller-built executable."""
+    return bool(getattr(sys, "frozen", False))
+
+
+def app_dir() -> Path:
+    """Folder that holds config.json and the bundled vendor/ binaries.
+
+    When frozen (PyInstaller), this is the directory of the executable — i.e.
+    the install directory (C:\\UploadStation) where the installer also placed
+    config.json and vendor/. In development it's the repo root.
+    """
+    if is_frozen():
+        return Path(sys.executable).resolve().parent
+    return REPO_ROOT
+
+
 @dataclass
 class Config:
     hub_base_url: str = ""
@@ -64,7 +81,7 @@ def config_file_path() -> Path:
     env = os.environ.get("UPLOAD_STATION_CONFIG")
     if env:
         return Path(env).expanduser()
-    return REPO_ROOT / "config.json"
+    return app_dir() / "config.json"
 
 
 def load_config() -> Config:

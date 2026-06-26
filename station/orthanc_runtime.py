@@ -10,7 +10,7 @@ from pathlib import Path
 
 import requests
 
-from .config import Config, REPO_ROOT
+from .config import Config, REPO_ROOT, app_dir
 
 log = logging.getLogger("orthanc")
 
@@ -26,10 +26,13 @@ def find_orthanc_executable(cfg: Config) -> Path | None:
         return p if p.exists() else None
 
     candidates: list[Path] = []
-    vendor = REPO_ROOT / "vendor"
-    if vendor.exists():
-        candidates += sorted(vendor.rglob("Orthanc"))
-        candidates += sorted(vendor.rglob("Orthanc.exe"))
+    # Search the bundled vendor/ folder both next to the installed executable
+    # (PyInstaller/Inno install dir) and at the repo root (development).
+    for root in {app_dir(), REPO_ROOT}:
+        vendor = root / "vendor"
+        if vendor.exists():
+            candidates += sorted(vendor.rglob("Orthanc.exe"))
+            candidates += sorted(vendor.rglob("Orthanc"))
     on_path = shutil.which("Orthanc")
     if on_path:
         candidates.append(Path(on_path))

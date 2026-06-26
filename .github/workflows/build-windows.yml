@@ -1,0 +1,99 @@
+name: Build Windows installer
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (without leading v)"
+        required: true
+        default: "1.2.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: ver
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $v = "${{ github.ref_name }}".TrimStart("v")
+          } else {
+            $v = "${{ github.event.inputs.version }}"
+          }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Building version $v"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Download portable Orthanc + worklist plugin
+        run: |
+          $dst = "vendor\orthanc-windows"
+          New-Item -ItemType Directory -Force -Path $dst | Out-Null
+          $base = "https://orthanc.uclouvain.be/downloads/windows-64/orthanc/mainline"
+          Invoke-WebRequest -Uri "$base/Orthanc.exe" -OutFile "$dst\Orthanc.exe"
+          Invoke-WebRequest -Uri "$base/ModalityWorklists.dll" -OutFile "$dst\ModalityWorklists.dll"
+          Get-ChildItem $dst
+
+      - name: Download VC++ runtime
+        run: |
+          New-Item -ItemType Directory -Force -Path "redist" | Out-Null
+          Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "redist\vc_redist.x64.exe"
+
+      - name: Build app with PyInstaller
+        run: |
+          pyinstaller --noconfirm packaging\UploadStation.spec
+          if (-not (Test-Path "dist\UploadStation\UploadStation.exe")) {
+            throw "PyInstaller did not produce UploadStation.exe"
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Compile installer
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          & "$iscc" "/DAppVersion=${{ steps.ver.outputs.version }}" "installer\UploadStation.iss"
+          if (-not (Test-Path "dist_installer\UploadStation-Setup.exe")) {
+            throw "Inno Setup did not produce UploadStation-Setup.exe"
+          }
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UploadStation-Setup
+          path: dist_installer/UploadStation-Setup.exe
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: Upload Station v${{ steps.ver.outputs.version }}
+          body: |
+            All-in-one Windows installer — no Python or Orthanc install required.
+
+            Download **UploadStation-Setup.exe**, run it, paste the station token
+            from Practice Hub (Imaging - Stations), and the station installs,
+            opens the DICOM port (4242), auto-starts at logon, and begins
+            streaming captured images to Practice Hub.
+          files: dist_installer/UploadStation-Setup.exe
