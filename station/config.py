@@ -18,7 +18,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Production Practice Hub. The anon/publishable key is safe to embed (it is the
 # public client key); it is only used for the optional login auth mode.
 DEFAULT_HUB_BASE_URL = "https://iqbszdfexefwursnocgb.supabase.co/functions/v1"
-DEFAULT_SUPABASE_ANON_KEY = ""
+DEFAULT_SUPABASE_ANON_KEY = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxYnN6ZGZleGVmd3Vyc25vY2diIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NDYyNTYsImV4cCI6MjA4NTAyMjI1Nn0."
+    "mCsepU3A1wEkJM7oUQ_mGT0RzRt1oJmPfQF40xzDhcE"
+)
 
 
 def is_frozen() -> bool:
